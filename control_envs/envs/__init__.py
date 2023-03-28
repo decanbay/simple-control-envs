@@ -1,4 +1,5 @@
 from control_envs.envs.pendulum_cont import PendulumEnv
+from control_envs.envs.pendulum_cont import PendulumJaxEnv
 from control_envs.envs.cartpole_cont import CartPoleEnvCont
 from control_envs.envs.cartpole_cont_swingup import CartPoleSwingupCont
 from control_envs.envs.cartpole_cont_swingup import CartPoleSwingupDiscrete

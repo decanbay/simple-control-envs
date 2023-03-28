@@ -6,7 +6,12 @@ register(
     max_episode_steps=200,
     nondeterministic=False
 )
-
+register(
+    id='PendulumContJax-v1',
+    entry_point='control_envs.envs:PendulumJaxEnv',
+    max_episode_steps=200,
+    nondeterministic=False
+)
 register(
     id='CartPoleContA-v1',
     entry_point='control_envs.envs:CartPoleEnvCont',
