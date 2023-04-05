@@ -16,7 +16,6 @@ Tasks
 
 
 '''
-
 import importlib
 import gym
 import numpy as np
@@ -141,18 +140,16 @@ class MassEnv(gym.Env):
             fname_spring = path.join(path.dirname(__file__), "assets/spring.png")
             fname_force = path.join(path.dirname(__file__), "assets/arrow.png")
             self.force_img = rendering.Image(fname_force, 1, 1)
-            self.force_img.set_color(0.1, 0.1, 0.7)
+            self.force_img.set_color(1, 1, 1)
 
             self.force_imgtrans = rendering.Transform()
             self.force_img.add_attr(self.force_imgtrans)
-#            self.viewer.add_geom(self.force_img)
 
   
             
             self.spring_img = rendering.Image(fname_spring, 1, 1)
             self.spr_imgtrans = rendering.Transform()
             self.spring_img.add_attr(self.spr_imgtrans)
-#            self.viewer.add_geom(self.spring_img)
 
             
         self.viewer.add_onetime(self.spring_img)
@@ -164,8 +161,8 @@ class MassEnv(gym.Env):
         cartx = x[0] * scale + screen_width / 2.0  # MIDDLE OF CART
         self.carttrans.set_translation(cartx, carty)
         self.spr_imgtrans.set_translation(cartx/2,carty) #pixels
-        self.force_imgtrans.set_translation(cartx,carty+50) #pixels
-        self.force_imgtrans.scale = (self.last_f*3,30) #pixels
+        self.force_imgtrans.set_translation(cartx+80,carty) #pixels
+        self.force_imgtrans.scale = (self.last_f*2,20) #pixels
         self.spr_imgtrans.scale = (cartx,50)
         return self.viewer.render(return_rgb_array=mode == "rgb_array")
 

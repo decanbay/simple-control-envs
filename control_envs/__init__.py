@@ -33,6 +33,6 @@ register(
 register(
     id='MSD-v1',
     entry_point='control_envs.envs:MassEnv',
-    max_episode_steps=1000,
+    max_episode_steps=250,
     nondeterministic=False
 )
