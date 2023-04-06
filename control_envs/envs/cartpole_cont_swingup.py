@@ -99,7 +99,7 @@ class CartPoleSwingupCont(gym.Env):
         x, x_dot, theta, theta_dot = self.state
         #force = self.force_mag if action == 1 else -self.force_mag
         force = action[0]
-
+        force = np.clip(force, -self.force_mag, self.force_mag)
         theta = self._angle_normalize(theta) ###
 
         costheta = math.cos(theta)
