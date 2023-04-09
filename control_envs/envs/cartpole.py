@@ -1,3 +1,9 @@
+"""
+Classic cart-pole system implemented by Rich Sutton et al.
+Copied from http://incompleteideas.net/sutton/book/code/pole.c
+permalink: https://perma.cc/C9ZM-652R
+"""
+
 import math
 import gym
 from gym import spaces, logger
@@ -5,7 +11,7 @@ from gym.utils import seeding
 import numpy as np
 
 
-class CartPoleEnvCont(gym.Env):
+class CartPoleEnv2(gym.Env):
     """
     Description:
         A pole is attached by an un-actuated joint to a cart, which moves along
@@ -54,17 +60,16 @@ class CartPoleEnvCont(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0, integrator='semi-implicit', random_start=True ):
-        super(gym.Env).__init__()
+    def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0,  random_start=True):
         self.gravity = 9.8
         self.masscart = mc
         self.masspole = mp
-        self.total_mass = mp+mc
+        self.total_mass = self.masspole + self.masscart
         self.length = l  # actually half the pole's length
-        self.polemass_length = mp * l
+        self.polemass_length = self.masspole * self.length
         self.force_mag = max_force
         self.tau = 0.02  # seconds between state updates
-        self.kinematics_integrator = integrator # 'euler' or 'else'
+        self.kinematics_integrator = "euler"
         self.random_start = random_start
 
         # Angle at which to fail the episode
@@ -83,7 +88,7 @@ class CartPoleEnvCont(gym.Env):
             dtype=np.float32,
         )
 
-        self.action_space = spaces.Box(low=-self.force_mag, high=self.force_mag, shape=(1,), dtype=np.float32)
+        self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
 
         self.seed()
@@ -97,10 +102,11 @@ class CartPoleEnvCont(gym.Env):
         return [seed]
 
     def step(self, action):
-        x, x_dot, theta, theta_dot = self.state
-        #force = self.force_mag if action == 1 else -self.force_mag
-        force = action[0]
+        err_msg = "%r (%s) invalid" % (action, type(action))
+        assert self.action_space.contains(action), err_msg
 
+        x, x_dot, theta, theta_dot = self.state
+        force = self.force_mag if action == 1 else -self.force_mag
         costheta = math.cos(theta)
         sintheta = math.sin(theta)
 

@@ -20,25 +20,26 @@ from os import path
 class PendulumEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 30}
 
-    def __init__(self):
+    def __init__(self, M=1.0, m=0, b=0.0,L=1.0, max_torque=2.0, random_start=True):
         super(gym.Env).__init__()
         self.g = 9.807
         self.dt = 0.05
         self.dt_ode = self.dt
-        self.M = 1.0 # mass of the rod
-        self.m = 0*0.05*1  # mass attached to tip
-        self.L = 1.0
-        self.b = 0*0.005
-        self.I0 = (self.M*self.L**2)/3 + self.m*self.L**2  #mass moment of inertia
-        self.max_torque = 2.0
+        self.M = M # mass of the rod
+        self.m = m  # mass attached to tip
+        self.L = L
+        self.b = b
+        self.I0 = (M * L**2)/3 + m* L**2  #mass moment of inertia
+        self.max_torque = max_torque
         self.max_rot_speed = 8
         ALPHA_MAX = 2*np.pi
         obs_high = np.asarray([ALPHA_MAX, np.inf],
                               dtype=np.float32)
+        self.random_start = random_start
         self.observation_space = spaces.Box(-obs_high, obs_high,
                                             dtype=np.float32)
-        self.action_space = spaces.Box(low=-self.max_torque,
-                                       high=self.max_torque,
+        self.action_space = spaces.Box(low=-max_torque,
+                                       high=max_torque,
                                        shape=(1,),
                                        dtype=np.float32)
         self.states = []
@@ -54,7 +55,10 @@ class PendulumEnv(gym.Env):
 
     def reset(self):
         # self.state = np.concatenate(([0],np.random.uniform(low = np.pi-0.1, high=np.pi+0.1, size=1),[0],np.random.uniform(low = -np.pi, high=np.pi, size=1)))
-        self.state = np.array([np.random.uniform(low = np.pi-0.1, high=np.pi+0.1), np.random.uniform(low = -np.pi, high=np.pi)], dtype=np.float32)
+        if self.random_start:
+            self.state = np.array([np.random.uniform(low = np.pi-0.1, high=np.pi+0.1), np.random.uniform(low = -np.pi, high=np.pi)], dtype=np.float32)
+        else:
+            self.state = np.array([np.pi, 0], dtype=np.float32)
         self.states.append(self.state)
         self.episode_steps = 0
         self.last_u = None
@@ -148,18 +152,19 @@ class PendulumEnv(gym.Env):
 
 
 class PendulumDiscEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, M=1.0, m=0, b=0.0,L=1.0, max_torque=2.0, random_start=True):
         super(gym.Env).__init__()
         self.g = 9.807
         self.dt = 0.05
         self.dt_ode = self.dt
-        self.M = 1.0 # mass of the rod
-        self.m = 0*0.05*1  # mass attached to tip
-        self.L = 1.0
-        self.b = 0*0.005
-        self.I0 = (self.M*self.L**2)/3 + self.m*self.L**2  #mass moment of inertia
-        self.max_torque = 2.0
+        self.M = M # mass of the rod
+        self.m = m  # mass attached to tip
+        self.L = L
+        self.b = b
+        self.I0 = (M* L**2)/3 + m * L**2  #mass moment of inertia
+        self.max_torque = max_torque
         self.max_rot_speed = 8
+        self.random_start = random_start
         ALPHA_MAX = 2*np.pi
         obs_high = np.asarray([ALPHA_MAX, np.inf],
                               dtype=np.float64)
@@ -182,8 +187,12 @@ class PendulumDiscEnv(gym.Env):
     
 
     def reset(self):
+        if self.random_start:
+            self.state = np.array([np.random.uniform(low = np.pi-0.1, high=np.pi+0.1), np.random.uniform(low = -np.pi, high=np.pi)], dtype=np.float32)
+        else:
+            self.state = np.array([np.pi, 0], dtype=np.float32)
         # self.state = np.concatenate(([0],np.random.uniform(low = np.pi-0.1, high=np.pi+0.1, size=1),[0],np.random.uniform(low = -np.pi, high=np.pi, size=1)))
-        self.state = np.array([np.random.uniform(low = np.pi-0.1, high=np.pi+0.1), np.random.uniform(low = -np.pi, high=np.pi)], dtype=np.float32)
+        #self.state = np.array([np.random.uniform(low = np.pi-0.1, high=np.pi+0.1), np.random.uniform(low = -np.pi, high=np.pi)], dtype=np.float32)
         self.states.append(self.state)
         self.episode_steps = 0
         self.last_u = None

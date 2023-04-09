@@ -28,15 +28,15 @@ from os import path
 class MassEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self,m=1,k=10,c=0.1):
+    def __init__(self,m=1,k=10,c=0.1, random_start=True):
         super(gym.Env).__init__()
-        self._m = m  # mass in kg
-        self._k = k # spring constant N/m
-        self._c = c
+        self.m = m  # mass in kg
+        self.k = k # spring constant N/m
+        self.c = c
         #, m=1,k=1,c=1
         self.dt = 0.02
-        self.A = np.array([[1, self.dt], [-self.dt*self._k/self._m , (1-self.dt*self._c/self._m)]], dtype=np.float32)
-        self.B = np.array((0, self.dt/self._m))
+        self.A = np.array([[1, self.dt], [-self.dt*k/m , (1-self.dt*c/m)]], dtype=np.float32)
+        self.B = np.array((0, self.dt/self.m))
         self.max_force = 50.0 # [N}]
         self.max_speed = 10.0# [m/s]
         self.max_pos = 5.0 # [m]
@@ -44,6 +44,7 @@ class MassEnv(gym.Env):
         self.x_threshold = 3
         self.length = 0.5
         self.width = 0.5
+        self.random_start = random_start
 
         obs_high = np.asarray([self.max_pos, self.max_speed],
                               dtype=np.float32)
@@ -67,15 +68,18 @@ class MassEnv(gym.Env):
         return [seed]
 
     
-    def recalc(self):
-        A = np.array([[1, self.dt], [-self.dt*self._k/self._m , (1-self.dt*self._c/self._m)]], dtype=np.float32)
-        B = np.array((0, self.dt/self._m))
-        return A, B
+    #def recalc(self):
+    #    A = np.array([[1, self.dt], [-self.dt*self._k/self._m , (1-self.dt*self._c/self._m)]], dtype=np.float32)
+    #    B = np.array((0, self.dt/self._m))
+    #    return A, B
 
     def reset(self):
-        self.A , self.B = self.recalc()
+        # self.A , self.B = self.recalc()
         pos = -1
-        noise_magnitude=0.02 
+        if self.random_start:
+            noise_magnitude = 0.02 
+        else:
+            noise_magnitude = 0.0
         self.state = np.array([np.random.uniform(low = pos-noise_magnitude,
                                                   high= pos+noise_magnitude),
                                 np.random.uniform(low = -noise_magnitude,

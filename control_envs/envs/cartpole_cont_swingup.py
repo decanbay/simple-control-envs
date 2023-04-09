@@ -54,17 +54,18 @@ class CartPoleSwingupCont(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self):
+    def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0, integrator='semi-implicit', random_start=True):
+        super(gym.Env).__init__()
         self.gravity = 9.8
-        self.masscart = 1.0
-        self.masspole = 0.1
-        self.total_mass = self.masspole + self.masscart
-        self.length = 0.5  # actually half the pole's length
+        self.masscart = mc
+        self.masspole = mp
+        self.total_mass = mp + mc
+        self.length = l  # actually half the pole's length
         self.polemass_length = self.masspole * self.length
-        self.force_mag = 10.0
+        self.force_mag = max_force
         self.tau = 0.02  # seconds between state updates
-        self.kinematics_integrator = "euler"
-
+        self.kinematics_integrator = integrator
+        self.random_start = random_start
         # Angle at which to fail the episode
         self.theta_threshold_radians = 12 * 2 * math.pi / 360
         self.x_threshold = 2.4
@@ -171,7 +172,10 @@ class CartPoleSwingupCont(gym.Env):
 
 
     def reset(self):
-        self.state = np.concatenate((np.random.uniform(low=-0.05, high=0.05, size=(2,)), np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=(1,)),np.random.uniform(low=-0.05, high=0.05, size=(1,))))
+        if self.random_start:
+            self.state = np.concatenate((np.random.uniform(low=-0.05, high=0.05, size=(2,)), np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=(1,)),np.random.uniform(low=-0.05, high=0.05, size=(1,))))
+        else:
+            self.state = np.array([0,0,np.pi,0], dtype=np.float32)
         self.steps_beyond_done = None
         return np.array(self.state, dtype=np.float32)
 
@@ -254,17 +258,18 @@ class CartPoleSwingupCont(gym.Env):
 class CartPoleSwingupDiscrete(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self):
+    def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0, integrator='semi-implicit', random_start=True):
+        super(gym.Env).__init__()
         self.gravity = 9.8
-        self.masscart = 1.0
-        self.masspole = 0.1
-        self.total_mass = self.masspole + self.masscart
-        self.length = 0.5  # actually half the pole's length
-        self.polemass_length = self.masspole * self.length
-        self.force_mag = 10.0
+        self.masscart = mc
+        self.masspole = mp
+        self.total_mass = mp + mc
+        self.length = l  # actually half the pole's length
+        self.polemass_length = mp * l
+        self.force_mag = max_force
         self.tau = 0.02  # seconds between state updates
-        self.kinematics_integrator = "euler"
-    
+        self.kinematics_integrator = integrator
+        self.random_start = random_start
         # Angle at which to fail the episode
         self.theta_threshold_radians = 12 * 2 * math.pi / 360
         self.x_threshold = 2.4
@@ -377,7 +382,10 @@ class CartPoleSwingupDiscrete(gym.Env):
     
 
     def reset(self):
-        self.state = np.concatenate((np.random.uniform(low=-0.05, high=0.05, size=(2,)), np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=(1,)),np.random.uniform(low=-0.05, high=0.05, size=(1,))))
+        if self.random_start:
+            self.state = np.concatenate((np.random.uniform(low=-0.05, high=0.05, size=(2,)), np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=(1,)),np.random.uniform(low=-0.05, high=0.05, size=(1,))))
+        else:
+            self.state = np.array([0,0,np.pi,0], dtype=np.float32)
         self.steps_beyond_done = None
         return np.array(self.state, dtype=np.float32)
 

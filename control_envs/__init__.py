@@ -1,12 +1,23 @@
 from gym.envs.registration import register
 
 register(
+    id='Pendulum-v2',
+    entry_point='control_envs.envs:PendulumEnv2',
+    max_episode_steps=500,
+    #nondeterministic=False
+)
+register(
     id='PendulumCont-v1',
     entry_point='control_envs.envs:PendulumEnv',
-    max_episode_steps=200,
-    nondeterministic=False
+    max_episode_steps=500,
+    #nondeterministic=False
 )
-
+register(
+    id='CartPole-v2',
+    entry_point='control_envs.envs:CartPoleEnv2',
+    max_episode_steps=500,
+    reward_threshold=475.0,
+)
 register(
     id='CartPoleContA-v1',
     entry_point='control_envs.envs:CartPoleEnvCont',
@@ -27,12 +38,12 @@ register(
 register(
     id='PendulumDisc-v1',
     entry_point='control_envs.envs:PendulumDiscEnv',
-    max_episode_steps=200,
+    max_episode_steps=500,
     nondeterministic=False
 )
 register(
     id='MSD-v1',
     entry_point='control_envs.envs:MassEnv',
-    max_episode_steps=250,
+    max_episode_steps=500,
     nondeterministic=False
 )
