@@ -20,16 +20,16 @@ from os import path
 class PendulumEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 30}
 
-    def __init__(self, M=1.0, m=0, b=0.0,L=1.0, max_torque=2.0, random_start=True):
+    def __init__(self, m=1.0, mp=0, b=0.0,l=1.0, max_torque=2.0, random_start=True):
         super(gym.Env).__init__()
         self.g = 9.807
         self.dt = 0.05
         self.dt_ode = self.dt
-        self.M = M # mass of the rod
-        self.m = m  # mass attached to tip
-        self.L = L
+        self.m = m # mass of the rod
+        self.mp = mp  # mass attached to tip
+        self.L = l
         self.b = b
-        self.I0 = (M * L**2)/3 + m* L**2  #mass moment of inertia
+        self.I0 = (m * l**2)/3 + mp* l**2  #mass moment of inertia
         self.max_torque = max_torque
         self.max_rot_speed = 8
         ALPHA_MAX = 2*np.pi
@@ -91,13 +91,13 @@ class PendulumEnv(gym.Env):
         self.last_u = u  # for rendering
         g = self.g
         L = self.L
-        M = self.M
         m = self.m
+        mp = self.mp
         I0 = self.I0
         b = self.b
         alpha, alpha_d = self.state
         alpha = self._angle_normalize(alpha)
-        alpha_dd = ((m+M/2)*g*L*np.sin(alpha) - b*alpha_d + u[0])/I0
+        alpha_dd = ((mp+m/2)*g*L*np.sin(alpha) - b*alpha_d + u[0])/I0
         alpha_d_ = alpha_d + alpha_dd * self.dt
         alpha_ = alpha + alpha_d_*self.dt
         alpha_d_ = np.clip(alpha_d_, -self.max_rot_speed, self.max_rot_speed)
@@ -152,16 +152,16 @@ class PendulumEnv(gym.Env):
 
 
 class PendulumDiscEnv(gym.Env):
-    def __init__(self, M=1.0, m=0, b=0.0,L=1.0, max_torque=2.0, random_start=True):
+    def __init__(self, m=1.0, mp=0, b=0.0,l=1.0, max_torque=2.0, random_start=True):
         super(gym.Env).__init__()
         self.g = 9.807
         self.dt = 0.05
         self.dt_ode = self.dt
-        self.M = M # mass of the rod
-        self.m = m  # mass attached to tip
-        self.L = L
+        self.M = m # mass of the rod
+        self.m = mp  # mass attached to tip
+        self.L = l
         self.b = b
-        self.I0 = (M* L**2)/3 + m * L**2  #mass moment of inertia
+        self.I0 = (m* l**2)/3 + mp * l**2  #mass moment of inertia
         self.max_torque = max_torque
         self.max_rot_speed = 8
         self.random_start = random_start
@@ -174,7 +174,6 @@ class PendulumDiscEnv(gym.Env):
         self.action_space = spaces.Discrete(5)
         self.vis_rate = 1/self.dt
         self.vis = None
-        self.L_vis = self.L
         self.states = []
         self._max_episode_steps = int(10/self.dt)
         self.max_episode_steps=self._max_episode_steps

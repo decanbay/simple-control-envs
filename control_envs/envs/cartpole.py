@@ -60,7 +60,7 @@ class CartPoleEnv2(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0,  random_start=True):
+    def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0,  random_start=True, integrator='semi-implicit'):
         self.gravity = 9.8
         self.masscart = mc
         self.masspole = mp
@@ -69,7 +69,7 @@ class CartPoleEnv2(gym.Env):
         self.polemass_length = self.masspole * self.length
         self.force_mag = max_force
         self.tau = 0.02  # seconds between state updates
-        self.kinematics_integrator = "euler"
+        self.kinematics_integrator = integrator
         self.random_start = random_start
 
         # Angle at which to fail the episode
