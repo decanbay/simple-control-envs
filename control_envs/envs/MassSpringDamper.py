@@ -34,9 +34,9 @@ class MassEnv(gym.Env):
         self.k = k # spring constant N/m
         self.c = c
         #, m=1,k=1,c=1
-        self.dt = 0.02
+        self.dt = 0.01
         self.A = np.array([[1, self.dt], [-self.dt*k/m , (1-self.dt*c/m)]], dtype=np.float32)
-        self.B = np.array((0, self.dt/self.m))
+        self.B = np.array((0, self.dt/m))
         self.max_force = 50.0 # [N}]
         self.max_speed = 10.0# [m/s]
         self.max_pos = 5.0 # [m]
@@ -56,7 +56,7 @@ class MassEnv(gym.Env):
                                        dtype=np.float32)
         self.seed()
 
-        self.states = []
+#        self.states = []
         self._max_episode_steps = int(5/self.dt)
         self.max_episode_steps=self._max_episode_steps
         self.viewer = None
@@ -75,7 +75,7 @@ class MassEnv(gym.Env):
 
     def reset(self):
         # self.A , self.B = self.recalc()
-        pos = -1
+        pos = -0.1
         if self.random_start:
             noise_magnitude = 0.02 
         else:
@@ -86,7 +86,7 @@ class MassEnv(gym.Env):
                                                   high= noise_magnitude)],
                               dtype=np.float32)
         # self.state = np.array([0,0])
-        self.states.append(self.state)
+#        self.states.append(self.state)
         # self.vis = None
         self.episode_steps = 0
         # print('Reset ...')
@@ -99,19 +99,30 @@ class MassEnv(gym.Env):
         return r
 
     def step(self, f):
+        Ts = self.dt
+        k = self.k
+        m = self.m
+        c = self.c
+        a11 = 1
+        a12 = Ts
+        a21 = -(Ts*k)/m
+        a22 = 1 - (Ts*c)/m
+        b1 = 0
+        b2 = Ts/m
         f[0] = np.clip(f[0], -self.max_force, self.max_force)
-        x_, x_d_ = self.A@self.state + self.B*f[0]
+        x ,x_d = self.state
+        x_ = a11 * x + a12 * x_d + b1 * f[0]
+        x_d_ = a21 * x + a22 * x_d + b2 * f[0]
+        #x_, x_d_ = self.A @ self.state + self.B*f[0]
         x_d_ = np.clip(x_d_, -self.max_speed, self.max_speed)
         x_= np.clip(x_, self.min_pos, self.max_pos)
         self.last_f = f[0]
-        reward = self.calc_reward(f[0])
         self.state = np.array([x_, x_d_])
-        self.states.append(self.state)
+        reward = self.calc_reward(f[0])
+#        self.states.append(self.state)
         self.episode_steps += 1
         done = False #self.episode_steps > self._max_episode_steps
-        obs_noise = np.array([np.random.randn()/100, np.random.randn()/100], dtype=np.float32)
-        obs_noise = 0
-        done=False
+        obs_noise = 0 * np.array([np.random.randn()/100, np.random.randn()/100], dtype=np.float32)
         return self.state+obs_noise, reward, done, {}
 
     def render(self, mode="human"):
