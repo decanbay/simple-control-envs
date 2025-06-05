@@ -1,7 +1,7 @@
 import math
-import gym
-from gym import spaces, logger
-from gym.utils import seeding
+import gymnasium as gym  # Changed from gym
+from gymnasium import spaces, logger  # Changed from gym
+from gymnasium.utils import seeding  # Changed from gym.utils
 import numpy as np
 
 
@@ -52,7 +52,7 @@ class CartPoleSwingupCont(gym.Env):
         195.0 over 100 consecutive trials.
     """
 
-    metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 50}
 
     def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0, integrator='semi-implicit', random_start=True):
         super().__init__()
@@ -131,132 +131,49 @@ class CartPoleSwingupCont(gym.Env):
 
         self.state = (x, x_dot, theta, theta_dot)
 
-#        done = bool(
-#            x < -self.x_threshold
-#            or x > self.x_threshold
-#            or theta < -self.theta_threshold_radians
-#            or theta > self.theta_threshold_radians
-#        )
+        # Swing-up reward: reward for being upright and centered
+        # Normalize theta to [-pi, pi]
+        theta_normalized = self._angle_normalize(theta)
+        
+        # Reward for being upright (theta close to 0) and centered (x close to 0)
+        upright_reward = np.cos(theta_normalized)  # 1 when upright, -1 when hanging
+        centered_reward = np.exp(-x**2)  # 1 when centered, decreases with distance
+        
+        reward = upright_reward + 0.1 * centered_reward - 0.001 * force**2
 
-#        if not done:
-#            reward = 1.0
-#        elif self.steps_beyond_done is None:
-#            # Pole just fell!
-#            self.steps_beyond_done = 0
-#            reward = 1.0
-#        else:
-#            if self.steps_beyond_done == 0:
-#                logger.warn(
-#                   "You are calling 'step()' even though this "
-#                    "environment has already returned done = True. You "
-#                    "should always call 'reset()' once you receive 'done = "
-#                    "True' -- any further steps are undefined behavior."
-#                )
-#            self.steps_beyond_done += 1
-#           reward = 0.0
-        done = False
-        #reward = -(theta**2 + 0.1*theta_dot**2 + x**2 + 0.1*x_dot**2 + 0.001 * (force/5)**2) # From GYM
-        reward = 1 - (0.8 * np.abs(theta)/np.pi + 0.2 * np.abs(x)/self.x_threshold)
-        out_of_bounds = x < -self.x_threshold or x > self.x_threshold
-        # Reward from Matlab  https://au.mathworks.com/help/reinforcement-learning/ug/train-ddpg-agent-to-swing-up-and-balance-cart-pole-system.html
-#        reward = -0.1*(5*theta**2 + x**2 +0.05*force**2) - 100 * out_of_bounds 
-        #reward = -0.1*(5*theta**2 + x**2 +0.05*force**2)
+        # Episode ends if cart goes too far
+        terminated = bool(x < -self.x_threshold or x > self.x_threshold)
 
+        return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
 
-        return np.array(self.state, dtype=np.float32), reward, done, {}
-
-#    def reset(self):
-#        self.state = self.np_random.uniform(low=-0.05, high=0.05, size=(4,))
-#        self.steps_beyond_done = None
-#        return np.array(self.state, dtype=np.float32)
-
-
-    def reset(self):
-        if self.random_start:
-            self.state = np.concatenate((np.random.uniform(low=-0.05, high=0.05, size=(2,)), np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=(1,)),np.random.uniform(low=-0.05, high=0.05, size=(1,))))
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        
+        # Start with pole hanging down and cart slightly off-center
+        if options and 'random_start' in options:
+            self.state = self.np_random.uniform(low=[-0.1, -0.1, np.pi-0.1, -0.1], 
+                                              high=[0.1, 0.1, np.pi+0.1, 0.1])
         else:
-            self.state = np.array([0,0,np.pi,0], dtype=np.float32)
-        self.steps_beyond_done = None
-        return np.array(self.state, dtype=np.float32)
-
-
-    def render(self, mode="human"):
-        screen_width = 600
-        screen_height = 400
-
-        world_width = self.x_threshold * 2
-        scale = screen_width / world_width
-        carty = 100  # TOP OF CART
-        polewidth = 10.0
-        polelen = scale * (2 * self.length)
-        cartwidth = 50.0
-        cartheight = 30.0
-
-        if self.viewer is None:
-            from gym.envs.classic_control import rendering
-
-            self.viewer = rendering.Viewer(screen_width, screen_height)
-            l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
-            axleoffset = cartheight / 4.0
-            cart = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
-            self.carttrans = rendering.Transform()
-            cart.add_attr(self.carttrans)
-            self.viewer.add_geom(cart)
-            l, r, t, b = (
-                -polewidth / 2,
-                polewidth / 2,
-                polelen - polewidth / 2,
-                -polewidth / 2,
-            )
-            pole = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
-            pole.set_color(0.8, 0.6, 0.4)
-            self.poletrans = rendering.Transform(translation=(0, axleoffset))
-            pole.add_attr(self.poletrans)
-            pole.add_attr(self.carttrans)
-            self.viewer.add_geom(pole)
-            self.axle = rendering.make_circle(polewidth / 2)
-            self.axle.add_attr(self.poletrans)
-            self.axle.add_attr(self.carttrans)
-            self.axle.set_color(0.5, 0.5, 0.8)
-            self.viewer.add_geom(self.axle)
-            self.track = rendering.Line((0, carty), (screen_width, carty))
-            self.track.set_color(0, 0, 0)
-            self.viewer.add_geom(self.track)
-
-            self._pole_geom = pole
-
-        if self.state is None:
-            return None
-
-        # Edit the pole polygon vertex
-        pole = self._pole_geom
-        l, r, t, b = (
-            -polewidth / 2,
-            polewidth / 2,
-            polelen - polewidth / 2,
-            -polewidth / 2,
-        )
-        pole.v = [(l, b), (l, t), (r, t), (r, b)]
-
-        x = self.state
-        cartx = x[0] * scale + screen_width / 2.0  # MIDDLE OF CART
-        self.carttrans.set_translation(cartx, carty)
-        self.poletrans.set_rotation(-x[2])
-
-        return self.viewer.render(return_rgb_array=mode == "rgb_array")
+            # Default: pole hanging down
+            self.state = np.array([0.0, 0.0, np.pi, 0.0])
+            
+        return np.array(self.state, dtype=np.float32), {}
 
     def _angle_normalize(self, x):
-        norm_ang = ((x+np.pi) % (2*np.pi)) - np.pi
-        return norm_ang
+        """Normalize angle to [-pi, pi]"""
+        return ((x + np.pi) % (2 * np.pi)) - np.pi
+
+    def render(self):
+        pass
 
     def close(self):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
-            
+
 
 class CartPoleSwingupDiscrete(gym.Env):
-    metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 50}
 
     def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0, integrator='semi-implicit', random_start=True):
         super(gym.Env).__init__()
@@ -286,6 +203,7 @@ class CartPoleSwingupDiscrete(gym.Env):
             dtype=np.float32,
         )
     
+        # 5 discrete actions: large left, small left, no force, small right, large right
         self.action_space = spaces.Discrete(5)
         
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
@@ -303,161 +221,63 @@ class CartPoleSwingupDiscrete(gym.Env):
 
     
     def step(self, action):
+        # Map discrete actions to continuous forces
+        force_map = {
+            0: -self.force_mag,      # Large left
+            1: -self.force_mag/2,    # Small left  
+            2: 0.0,                  # No force
+            3: self.force_mag/2,     # Small right
+            4: self.force_mag        # Large right
+        }
+        
+        force = force_map[action]
+        
         x, x_dot, theta, theta_dot = self.state
-        #force = self.force_mag if action == 1 else -self.force_mag
-        a = action
-        if a == 0:
-            force = -self.force_mag
-        elif a == 1:
-            force = -self.force_mag/2
-        elif a == 2:
-            force = 0.0
-        elif a == 3:
-            force = self.force_mag/2
-        elif a == 4:
-            force = self.force_mag
+        
+        costheta = np.cos(theta)
+        sintheta = np.sin(theta)
 
-        theta = self._angle_normalize(theta) ###
-
-        costheta = math.cos(theta)
-        sintheta = math.sin(theta)
-
-        # For the interested reader:
-        # https://coneural.org/florian/papers/05_cart_pole.pdf
-        temp = (
-            force + self.polemass_length * theta_dot ** 2 * sintheta
-        ) / self.total_mass
+        temp = (force + self.polemass_length * theta_dot ** 2 * sintheta) / self.total_mass
         thetaacc = (self.gravity * sintheta - costheta * temp) / (
             self.length * (4.0 / 3.0 - self.masspole * costheta ** 2 / self.total_mass)
         )
         xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
 
-        if self.kinematics_integrator == "euler":
-            x = x + self.tau * x_dot
-            x_dot = x_dot + self.tau * xacc
-            theta = theta + self.tau * theta_dot
-            theta_dot = theta_dot + self.tau * thetaacc
-        else:  # semi-implicit euler
-            x_dot = x_dot + self.tau * xacc
-            x = x + self.tau * x_dot
-            theta_dot = theta_dot + self.tau * thetaacc
-            theta = theta + self.tau * theta_dot
-
-        theta = self._angle_normalize(theta) ### 
+        x = x + self.tau * x_dot
+        x_dot = x_dot + self.tau * xacc
+        theta = theta + self.tau * theta_dot
+        theta_dot = theta_dot + self.tau * thetaacc
 
         self.state = (x, x_dot, theta, theta_dot)
 
-#        done = bool(
-#            x < -self.x_threshold
-#            or x > self.x_threshold
-#            or theta < -self.theta_threshold_radians
-#            or theta > self.theta_threshold_radians
-#        )
+        # Swing-up reward
+        theta_normalized = self._angle_normalize(theta)
+        upright_reward = np.cos(theta_normalized)
+        centered_reward = np.exp(-x**2)
+        
+        reward = upright_reward + 0.1 * centered_reward - 0.001 * force**2
 
-#        if not done:
-#            reward = 1.0
-#        elif self.steps_beyond_done is None:
-#            # Pole just fell!
-#            self.steps_beyond_done = 0
-#            reward = 1.0
-#        else:
-#            if self.steps_beyond_done == 0:
-#                logger.warn(
-#                   "You are calling 'step()' even though this "
-#                    "environment has already returned done = True. You "
-#                    "should always call 'reset()' once you receive 'done = "
-#                    "True' -- any further steps are undefined behavior."
-#                )
-#            self.steps_beyond_done += 1
-#           reward = 0.0
-        done = False
-        #reward = -(theta**2 + 0.1*theta_dot**2 + x**2 + 0.1*x_dot**2 + 0.001 * (force/5)**2) # From GYM
-        reward = 1 - (0.8 * np.abs(theta)/np.pi + 0.2 * np.abs(x)/self.x_threshold)
-        # out_of_bounds = x < -self.x_threshold or x > self.x_threshold
-        # Reward from Matlab  https://au.mathworks.com/help/reinforcement-learning/ug/train-ddpg-agent-to-swing-up-and-balance-cart-pole-system.html
-#        reward = -0.1*(5*theta**2 + x**2 +0.05*force**2) - 100 * out_of_bounds 
-        #reward = -0.1*(5*theta**2 + x**2 +0.05*force**2)
-        return np.array(self.state, dtype=np.float32), reward, done, {}
-    
-    
+        terminated = bool(x < -self.x_threshold or x > self.x_threshold)
 
-    def reset(self):
-        if self.random_start:
-            self.state = np.concatenate((np.random.uniform(low=-0.05, high=0.05, size=(2,)), np.random.uniform(low=np.pi-0.05, high=np.pi+0.05, size=(1,)),np.random.uniform(low=-0.05, high=0.05, size=(1,))))
+        return np.array(self.state, dtype=np.float32), reward, terminated, False, {}
+
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        
+        if options and 'random_start' in options:
+            self.state = self.np_random.uniform(low=[-0.1, -0.1, np.pi-0.1, -0.1], 
+                                              high=[0.1, 0.1, np.pi+0.1, 0.1])
         else:
-            self.state = np.array([0,0,np.pi,0], dtype=np.float32)
-        self.steps_beyond_done = None
-        return np.array(self.state, dtype=np.float32)
-
-
-    def render(self, mode="human"):
-        screen_width = 600
-        screen_height = 400
-
-        world_width = self.x_threshold * 2
-        scale = screen_width / world_width
-        carty = 100  # TOP OF CART
-        polewidth = 10.0
-        polelen = scale * (2 * self.length)
-        cartwidth = 50.0
-        cartheight = 30.0
-
-        if self.viewer is None:
-            from gym.envs.classic_control import rendering
-
-            self.viewer = rendering.Viewer(screen_width, screen_height)
-            l, r, t, b = -cartwidth / 2, cartwidth / 2, cartheight / 2, -cartheight / 2
-            axleoffset = cartheight / 4.0
-            cart = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
-            self.carttrans = rendering.Transform()
-            cart.add_attr(self.carttrans)
-            self.viewer.add_geom(cart)
-            l, r, t, b = (
-                -polewidth / 2,
-                polewidth / 2,
-                polelen - polewidth / 2,
-                -polewidth / 2,
-            )
-            pole = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
-            pole.set_color(0.8, 0.6, 0.4)
-            self.poletrans = rendering.Transform(translation=(0, axleoffset))
-            pole.add_attr(self.poletrans)
-            pole.add_attr(self.carttrans)
-            self.viewer.add_geom(pole)
-            self.axle = rendering.make_circle(polewidth / 2)
-            self.axle.add_attr(self.poletrans)
-            self.axle.add_attr(self.carttrans)
-            self.axle.set_color(0.5, 0.5, 0.8)
-            self.viewer.add_geom(self.axle)
-            self.track = rendering.Line((0, carty), (screen_width, carty))
-            self.track.set_color(0, 0, 0)
-            self.viewer.add_geom(self.track)
-
-            self._pole_geom = pole
-
-        if self.state is None:
-            return None
-
-        # Edit the pole polygon vertex
-        pole = self._pole_geom
-        l, r, t, b = (
-            -polewidth / 2,
-            polewidth / 2,
-            polelen - polewidth / 2,
-            -polewidth / 2,
-        )
-        pole.v = [(l, b), (l, t), (r, t), (r, b)]
-
-        x = self.state
-        cartx = x[0] * scale + screen_width / 2.0  # MIDDLE OF CART
-        self.carttrans.set_translation(cartx, carty)
-        self.poletrans.set_rotation(-x[2])
-
-        return self.viewer.render(return_rgb_array=mode == "rgb_array")
+            self.state = np.array([0.0, 0.0, np.pi, 0.0])
+            
+        return np.array(self.state, dtype=np.float32), {}
 
     def _angle_normalize(self, x):
-        norm_ang = ((x+np.pi) % (2*np.pi)) - np.pi
-        return norm_ang
+        """Normalize angle to [-pi, pi]"""
+        return ((x + np.pi) % (2 * np.pi)) - np.pi
+
+    def render(self):
+        pass
 
     def close(self):
         if self.viewer:

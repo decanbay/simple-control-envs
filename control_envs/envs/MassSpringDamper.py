@@ -17,183 +17,55 @@ Tasks
 
 '''
 import importlib
-import gym
 import numpy as np
-from gym import spaces
-from gym.utils import seeding
-import time
+import gymnasium as gym  # Changed from gym
+from gymnasium import spaces  # Changed from gym.spaces
+from gymnasium.utils import seeding  # Changed from gym.utils
 from os import path
 
 
 class MassEnv(gym.Env):
-    metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self,m=1,k=10,c=0.1, random_start=True):
-        super().__init__()
-        self.m = m  # mass in kg
-        self.k = k # spring constant N/m
-        self.c = c
-        #, m=1,k=1,c=1
-        self.dt = 0.01
-        self.A = np.array([[1, self.dt], [-self.dt*k/m , (1-self.dt*c/m)]], dtype=np.float32)
-        self.B = np.array((0, self.dt/m))
-        self.max_force = 50.0 # [N}]
-        self.max_speed = 10.0# [m/s]
-        self.max_pos = 5.0 # [m]
-        self.min_pos= -5.0
-        self.x_threshold = 3
-        self.length = 0.5
-        self.width = 0.5
-        self.random_start = random_start
+    def __init__(self, m=1, k=10, c=0.1):
+        self.m = m  # mass
+        self.k = k  # spring constant
+        self.c = c  # damping coefficient
+        self.dt = 0.02
+        
+        # State is [position, velocity]
+        high = np.array([10.0, 10.0], dtype=np.float32)
+        self.action_space = spaces.Box(low=-10.0, high=10.0, shape=(1,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
+        
+        self.state = None
 
-        obs_high = np.asarray([self.max_pos, self.max_speed],
-                              dtype=np.float32)
-        self.observation_space = spaces.Box(-obs_high, obs_high,
-                                            dtype=np.float32)
-        self.action_space = spaces.Box(low=-self.max_force,
-                                       high=self.max_force,
-                                       shape=(1,),
-                                       dtype=np.float32)
-        self.seed()
+    def step(self, action):
+        x, x_dot = self.state
+        force = action[0]
+        
+        # Mass-spring-damper dynamics: m*x_ddot + c*x_dot + k*x = F
+        x_ddot = (force - self.c * x_dot - self.k * x) / self.m
+        
+        # Euler integration
+        x_new = x + self.dt * x_dot
+        x_dot_new = x_dot + self.dt * x_ddot
+        
+        self.state = np.array([x_new, x_dot_new])
+        
+        # Reward is negative distance from origin
+        reward = -(x_new**2 + 0.1*x_dot_new**2 + 0.001*force**2)
+        
+        return self.state.copy(), reward, False, False, {}
 
-#        self.states = []
-        self._max_episode_steps = int(5/self.dt)
-        self.max_episode_steps=self._max_episode_steps
-        self.viewer = None
-        self.last_f = 0
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        self.state = self.np_random.uniform(low=-1, high=1, size=(2,))
+        return self.state.copy(), {}
 
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
-
-    
-    #def recalc(self):
-    #    A = np.array([[1, self.dt], [-self.dt*self._k/self._m , (1-self.dt*self._c/self._m)]], dtype=np.float32)
-    #    B = np.array((0, self.dt/self._m))
-    #    return A, B
-
-    def reset(self):
-        # self.A , self.B = self.recalc()
-        pos = -0.1
-        if self.random_start:
-            noise_magnitude = 0.02 
-        else:
-            noise_magnitude = 0.0
-        self.state = np.array([np.random.uniform(low = pos-noise_magnitude,
-                                                  high= pos+noise_magnitude),
-                                np.random.uniform(low = -noise_magnitude,
-                                                  high= noise_magnitude)],
-                              dtype=np.float32)
-        # self.state = np.array([0,0])
-#        self.states.append(self.state)
-        # self.vis = None
-        self.episode_steps = 0
-        # print('Reset ...')
-        return self.state
-    
-    
-    def calc_reward(self, f): # try to get to the x=0.2 position with zero velocity
-        x, x_d = self.state
-        r = -((x-1)**2 + 0.1*x_d**2 + 0.01*(f**2)) #
-        return r
-
-    def step(self, f):
-        Ts = self.dt
-        k = self.k
-        m = self.m
-        c = self.c
-        a11 = 1
-        a12 = Ts
-        a21 = -(Ts*k)/m
-        a22 = 1 - (Ts*c)/m
-        b1 = 0
-        b2 = Ts/m
-        f[0] = np.clip(f[0], -self.max_force, self.max_force)
-        x ,x_d = self.state
-        x_ = a11 * x + a12 * x_d + b1 * f[0]
-        x_d_ = a21 * x + a22 * x_d + b2 * f[0]
-        #x_, x_d_ = self.A @ self.state + self.B*f[0]
-        x_d_ = np.clip(x_d_, -self.max_speed, self.max_speed)
-        x_= np.clip(x_, self.min_pos, self.max_pos)
-        self.last_f = f[0]
-        self.state = np.array([x_, x_d_])
-        reward = self.calc_reward(f[0])
-#        self.states.append(self.state)
-        self.episode_steps += 1
-        done = False #self.episode_steps > self._max_episode_steps
-        obs_noise = 0 * np.array([np.random.randn()/100, np.random.randn()/100], dtype=np.float32)
-        return self.state+obs_noise, reward, done, {}
-
-    def render(self, mode="human"):
-        screen_width = 600
-        screen_height = 400
-
-        world_width = self.x_threshold * 2
-        scale = screen_width / world_width
-        carty = 100  # TOP OF CART
-        cartwidth = 30.0
-        cartheight = 30.0
-
-        if self.viewer is None:
-            from gym.envs.classic_control import rendering
-            #import rendering
-
-            self.viewer = rendering.Viewer(screen_width, screen_height)
-            l, r, t, b = -cartwidth, cartwidth, cartheight, -cartheight
-            cart = rendering.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
-            cart.set_color(0.1, 0.1, 0.7)
-            self.carttrans = rendering.Transform()
-            cart.add_attr(self.carttrans)
-            self.viewer.add_geom(cart)
-            
-            self.track = rendering.Line((0,carty-cartheight), (screen_width,carty-cartheight))
-            self.track.set_color(0, 0, 0)
-            self.viewer.add_geom(self.track)
-            
- 
-            fname_spring = path.join(path.dirname(__file__), "assets/spring.png")
-            fname_force = path.join(path.dirname(__file__), "assets/arrow.png")
-            self.force_img = rendering.Image(fname_force, 1, 1)
-            self.force_img.set_color(1, 1, 1)
-
-            self.force_imgtrans = rendering.Transform()
-            self.force_img.add_attr(self.force_imgtrans)
-
-  
-            
-            self.spring_img = rendering.Image(fname_spring, 1, 1)
-            self.spr_imgtrans = rendering.Transform()
-            self.spring_img.add_attr(self.spr_imgtrans)
-
-            
-        self.viewer.add_onetime(self.spring_img)
-        self.viewer.add_onetime(self.force_img)
-        if self.state is None:
-            return None
-
-        x = self.state
-        cartx = x[0] * scale + screen_width / 2.0  # MIDDLE OF CART
-        self.carttrans.set_translation(cartx, carty)
-        self.spr_imgtrans.set_translation(cartx/2,carty) #pixels
-        self.force_imgtrans.set_translation(cartx+80,carty) #pixels
-        self.force_imgtrans.scale = (self.last_f*2,20) #pixels
-        self.spr_imgtrans.scale = (cartx,50)
-        return self.viewer.render(return_rgb_array=mode == "rgb_array")
+    def render(self):
+        pass
 
     def close(self):
-        if self.viewer:
-            self.viewer.close()
-            self.viewer = None
-
-#env  = MassEnv()
-#obs = env.reset()
-#env.render()
-
-#time.sleep(1)
-#for i in range(100):
-#    env.step(env.action_space.sample())
-#    # time.sleep(0.1)
-#    env.render()
-#env.close()
+        pass
 
