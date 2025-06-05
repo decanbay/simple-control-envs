@@ -15,7 +15,7 @@ from gym.utils import seeding
 
 class MassEnv(gym.Env):
     def __init__(self,m=1,k=10,c=0.1):
-        super(gym.Env).__init__()
+        super().__init__()
         self._m = m  # mass in kg
         self._k = k # spring constant N/m
         self._c = c

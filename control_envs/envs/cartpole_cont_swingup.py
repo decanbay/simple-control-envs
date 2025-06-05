@@ -55,7 +55,7 @@ class CartPoleSwingupCont(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
     def __init__(self, mc=1.0, mp=0.1, l=0.5, max_force=10.0, integrator='semi-implicit', random_start=True):
-        super(gym.Env).__init__()
+        super().__init__()
         self.gravity = 9.8
         self.masscart = mc
         self.masspole = mp

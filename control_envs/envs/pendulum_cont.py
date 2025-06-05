@@ -21,7 +21,7 @@ class PendulumEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 30}
 
     def __init__(self, m=1.0, mp=0, b=0.0,l=1.0, max_torque=2.0, random_start=True):
-        super(gym.Env).__init__()
+        super().__init__()
         self.g = 9.807
         self.dt = 0.05
         self.dt_ode = self.dt

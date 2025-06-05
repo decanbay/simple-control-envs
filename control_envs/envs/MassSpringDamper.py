@@ -29,7 +29,7 @@ class MassEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
     def __init__(self,m=1,k=10,c=0.1, random_start=True):
-        super(gym.Env).__init__()
+        super().__init__()
         self.m = m  # mass in kg
         self.k = k # spring constant N/m
         self.c = c
